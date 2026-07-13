@@ -2223,7 +2223,30 @@ async function handleVideoPage(page) {
   const videoInfo = await hasVideoPlaying(page);
 
   if (!videoInfo.hasVideo) {
-    // 没有视频时，先检查智能跳过
+    // 没有视频时，先检查是否需要点击"开始学习"
+    const startLearnClicked = await page.evaluate(() => {
+      const btns = Array.from(document.querySelectorAll('button, a, div')).filter(b => {
+        const text = (b.textContent || '').trim();
+        const rect = b.getBoundingClientRect();
+        return (text === '开始学习' || text.includes('开始学习')) && rect.width > 50 && rect.height > 20;
+      });
+      if (btns.length > 0) {
+        btns[0].click();
+        return true;
+      }
+      return false;
+    });
+    if (startLearnClicked) {
+      log('🖱️ Clicked "Start Learning" button, waiting for video...');
+      await page.waitForTimeout(3000);
+      // 重新检测视频
+      const newVideoInfo = await hasVideoPlaying(page);
+      if (newVideoInfo.hasVideo) {
+        return await handleVideoPage(page); // 递归处理视频
+      }
+    }
+
+    // 检查智能跳过
     if (CONFIG.smartSkipCompleted) {
       const completed = await isCourseCompleted(page);
       if (completed.completed) {
