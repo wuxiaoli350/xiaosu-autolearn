@@ -1,0 +1,12 @@
+{
+  "_comment": "小苏e学刷课 配置文件 - 修改后保存即可生效，删除此文件则使用默认值",
+  "cdpUrl": "http://localhost:9223",
+  "checkInterval": 3000,
+  "waitAfterVideoEnd": 2000,
+  "maxRetry": 40,
+  "videoFastForward": true,
+  "fastForwardThreshold": 0.95,
+  "smartSkipCompleted": true,
+  "notificationEnabled": true,
+  "logFile": "auto_learn_v6.log"
+}

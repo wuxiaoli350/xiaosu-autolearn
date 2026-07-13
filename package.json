@@ -1,0 +1,22 @@
+{
+  "name": "xiaosu-autolearn",
+  "version": "6.1.0",
+  "description": "小苏e学刷课 - 云学堂自动化学习脚本",
+  "main": "auto_learn_v6.js",
+  "scripts": {
+    "start": "node auto_learn_v6.js",
+    "postinstall": "npx playwright install chromium 2>/dev/null || echo '提示: 请手动运行 npx playwright install chromium'"
+  },
+  "dependencies": {
+    "playwright": "^1.49.0"
+  },
+  "optionalDependencies": {
+    "node-notifier": "^10.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "",
+  "license": "MIT",
+  "private": true
+}
