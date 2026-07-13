@@ -67,8 +67,12 @@ async function findCoursePage(contexts) {
     for (const page of ctx.pages()) {
       try {
         const url = page.url();
-        // 只查找课程播放页面
-        if (url.includes('yunxuetang.cn/o2o') && url.includes('playinfo')) {
+        // 匹配云学堂课程播放页面（多种 URL 格式）
+        // 格式1: yunxuetang.cn/o2o/.../playinfo
+        // 格式2: yunxuetang.cn/kng/#/course/play
+        // 格式3: xxx.yunxuetang.cn/kng/...
+        if ((url.includes('yunxuetang.cn') || url.includes('yxt.com')) &&
+            (url.includes('playinfo') || url.includes('/play') || url.includes('/course'))) {
           return page;
         }
       } catch(e) {}
