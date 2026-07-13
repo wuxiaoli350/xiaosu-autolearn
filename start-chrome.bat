@@ -95,6 +95,12 @@ if %errorlevel% equ 0 (
 set "USER_DATA=%TEMP%\chrome-debug-profile-xiaosu"
 echo [信息] 用户数据目录: %USER_DATA%
 
+:: 先关闭所有正在运行的 Chrome（避免实例冲突）
+echo [信息] 正在关闭已有的 Chrome 进程...
+taskkill /F /IM chrome.exe >nul 2>&1
+taskkill /F /IM msedge.exe >nul 2>&1
+timeout /t 2 /nobreak >nul
+
 :: 启动 Chrome 调试模式
 echo [信息] 正在启动 Chrome 调试模式...
 echo.
@@ -106,16 +112,26 @@ echo   - 请勿关闭此命令行窗口
 echo   - 自定义端口: start-chrome.bat --port 9223
 echo.
 
-start "" "%CHROME_PATH%" ^
-    --remote-debugging-port=%PORT% ^
-    --user-data-dir="%USER_DATA%" ^
-    --no-first-run ^
-    --no-default-browser-check ^
-    --disable-background-mode ^
-    --disable-extensions ^
-    --disable-sync ^
-    https://yunxuetang.cn
+:: 直接用 cmd /c 方式启动，确保不依赖已有进程
+start "" cmd /c ""%CHROME_PATH%" --remote-debugging-port=%PORT% --user-data-dir="%USER_DATA%" --no-first-run --no-default-browser-check --disable-background-mode --disable-extensions --disable-sync https://yunxuetang.cn"
 
-echo [完成] Chrome 已启动！请登录云学堂后运行 run.bat
+:: 等待 Chrome 启动
+timeout /t 3 /nobreak >nul
+
+:: 验证端口是否已开启
+netstat -ano | findstr ":%PORT%" >nul
+if %errorlevel% equ 0 (
+    echo [完成] Chrome 已成功启动在调试端口 %PORT%！
+    echo.
+    echo 请在 Chrome 中登录云学堂后运行 run.bat
+) else (
+    echo [错误] Chrome 未能成功启动调试端口 %PORT%
+    echo.
+    echo 请尝试以下方法：
+    echo   1. 确保没有其他程序占用端口 %PORT%
+    echo   2. 手动打开 cmd，执行以下命令：
+    echo      "%CHROME_PATH%" --remote-debugging-port=%PORT% --user-data-dir="%USER_DATA%"
+    echo   3. 或尝试其他端口：start-chrome.bat --port 9224
+)
 echo.
 pause
