@@ -82,10 +82,10 @@ async function findCoursePage(contexts) {
   return null;
 }
 
-// 判断是否在考试页面
+// 判断是否在考试页面（包括考试入口页和答题页）
 async function isExamPage(page) {
   return await page.evaluate(() => {
-    // 方法1：检查是否有"提交考试"按钮且可见
+    // 方法1：检查是否有"提交考试"按钮且可见（正在答题中）
     const buttons = document.querySelectorAll('button');
     for (const btn of buttons) {
       const text = btn.textContent?.trim() || '';
@@ -106,6 +106,18 @@ async function isExamPage(page) {
         const style = window.getComputedStyle(btn);
         if (style.display !== 'none' && style.visibility !== 'hidden') {
           return false;
+        }
+      }
+    }
+
+    // 方法2.5：检查是否有"开始考试"按钮（考试入口页）
+    for (const btn of buttons) {
+      const text = btn.textContent?.trim() || '';
+      const rect = btn.getBoundingClientRect();
+      if (text.includes('开始考试') && rect.width > 0 && rect.height > 0) {
+        const style = window.getComputedStyle(btn);
+        if (style.display !== 'none' && style.visibility !== 'hidden') {
+          return true;
         }
       }
     }
@@ -184,6 +196,24 @@ async function handlePopup(page) {
 // 在考试页面答题并提交
 async function doExam(page) {
   log('📝 开始处理考试...');
+
+  // 先检查是否在考试入口页（有"开始考试"按钮）
+  const startExamClicked = await page.evaluate(() => {
+    const btns = Array.from(document.querySelectorAll('button')).filter(b => {
+      const text = b.textContent?.trim() || '';
+      const rect = b.getBoundingClientRect();
+      return text.includes('开始考试') && rect.width > 0 && rect.height > 0;
+    });
+    if (btns.length > 0) {
+      btns[0].click();
+      return true;
+    }
+    return false;
+  });
+  if (startExamClicked) {
+    log('🖱️ Clicked "Start Exam" button');
+    await page.waitForTimeout(3000);
+  }
   
   let retryCount = 0;
   let justRetried = false; // 标记是否刚刚点了"再次考试"
