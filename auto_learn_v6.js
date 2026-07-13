@@ -12,6 +12,8 @@ const DEFAULT_CONFIG = {
   checkInterval: 3000,           // 每3秒检查一次
   waitAfterVideoEnd: 2000,       // 视频结束后等待2秒
   maxRetry: 40,                  // 考试重试次数
+  username: '',                  // 自动登录账号（留空则手动登录）
+  password: '',                  // 自动登录密码（留空则手动登录）
   videoFastForward: true,        // 视频自动快进到末尾
   fastForwardThreshold: 0.95,    // 快进触发阈值（播放进度超过此比例不触发）
   playbackRate: 2.0,             // 视频播放倍速（1.0=正常, 2.0=2倍速, 最大16）
@@ -2407,6 +2409,89 @@ function formatTime(seconds) {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+// 自动登录
+async function autoLogin(page) {
+  try {
+    // 等待页面加载
+    await page.waitForTimeout(2000);
+
+    // 检查是否已经登录（页面上有用户信息）
+    const alreadyLoggedIn = await page.evaluate(() => {
+      const bodyText = document.body?.innerText || '';
+      // 有课程列表、用户名等说明已登录
+      return bodyText.includes('我的课程') || bodyText.includes('个人中心') || bodyText.includes('退出');
+    });
+
+    if (alreadyLoggedIn) {
+      log('✅ Already logged in, skipping auto-login');
+      return;
+    }
+
+    // 查找用户名输入框
+    const usernameInput = await page.evaluate(() => {
+      const inputs = document.querySelectorAll('input');
+      for (const inp of inputs) {
+        const type = (inp.type || '').toLowerCase();
+        const placeholder = (inp.placeholder || '').toLowerCase();
+        const name = (inp.name || '').toLowerCase();
+        if (type === 'text' || placeholder.includes('账号') || placeholder.includes('用户名') ||
+            placeholder.includes('工号') || placeholder.includes('手机') || placeholder.includes('account') ||
+            placeholder.includes('username') || name.includes('username') || name.includes('account')) {
+          return true;
+        }
+      }
+      return false;
+    });
+
+    if (!usernameInput) {
+      log('⚠️ Login form not found, please login manually');
+      return;
+    }
+
+    log(`🔑 Auto-login with account: ${CONFIG.username}`);
+
+    // 填写账号密码并登录
+    await page.evaluate(({ username, password }) => {
+      const inputs = document.querySelectorAll('input');
+      for (const inp of inputs) {
+        const type = (inp.type || '').toLowerCase();
+        const placeholder = (inp.placeholder || '').toLowerCase();
+        const name = (inp.name || '').toLowerCase();
+
+        if (type === 'text' || placeholder.includes('账号') || placeholder.includes('用户名') ||
+            placeholder.includes('工号') || placeholder.includes('手机') || placeholder.includes('account') ||
+            placeholder.includes('username') || name.includes('username') || name.includes('account')) {
+          inp.value = username;
+          inp.dispatchEvent(new Event('input', { bubbles: true }));
+          inp.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        if (type === 'password' || placeholder.includes('密码') || placeholder.includes('password') ||
+            name.includes('password') || name.includes('pwd')) {
+          inp.value = password;
+          inp.dispatchEvent(new Event('input', { bubbles: true }));
+          inp.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+
+      // 点击登录按钮
+      const btns = document.querySelectorAll('button, a, div, span');
+      for (const btn of btns) {
+        const text = (btn.textContent || '').trim();
+        if (text === '登录' || text === '登 录' || text === 'Sign In' || text === 'Login') {
+          btn.click();
+          return;
+        }
+      }
+    }, { username: CONFIG.username, password: CONFIG.password });
+
+    log('✅ Auto-login submitted, waiting...');
+    await page.waitForTimeout(3000);
+  } catch (e) {
+    log(`⚠️ Auto-login error: ${e.message}`);
+  }
+}
+
 // 主循环
 async function main() {
   log('========================================');
@@ -2420,6 +2505,21 @@ async function main() {
       // 连接浏览器
       const browser = await chromium.connectOverCDP(CDP_URL);
       const contexts = browser.contexts();
+      
+      // 自动登录（如果配置了账号密码）
+      if (CONFIG.username && CONFIG.password) {
+        for (const ctx of contexts) {
+          for (const page of ctx.pages()) {
+            try {
+              const url = page.url();
+              // 在首页或登录页自动填写登录
+              if (url.includes('yunxuetang.cn') && (url.includes('/main') || url.includes('/login') || url.includes('/index'))) {
+                await autoLogin(page);
+              }
+            } catch(e) {}
+          }
+        }
+      }
       
       // 查找课程页面
       const coursePage = await findCoursePage(contexts);

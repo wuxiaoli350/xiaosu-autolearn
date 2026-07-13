@@ -37,7 +37,7 @@ set "USER_DATA=%TEMP%\chrome-debug-profile-xiaosu"
 echo [INFO] Launching Chrome on port 9223...
 echo.
 
-start "" "%CHROME%" --remote-debugging-port=9223 --user-data-dir="%USER_DATA%" --no-first-run --no-default-browser-check https://yunxuetang.cn
+start "" "%CHROME%" --remote-debugging-port=9223 --user-data-dir="%USER_DATA%" --no-first-run --no-default-browser-check https://suzhoubank.yunxuetang.cn/main/#/index
 
 timeout /t 4 /nobreak >nul
 

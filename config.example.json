@@ -1,5 +1,5 @@
 {
-  "_comment": "小苏e学刷课 配置文件 - 修改后保存即可生效，删除此文件则使用默认值",
+  "_comment": "小苏e学刷课 配置文件",
   "cdpUrl": "http://localhost:9223",
   "checkInterval": 3000,
   "waitAfterVideoEnd": 2000,
@@ -9,5 +9,7 @@
   "playbackRate": 2.0,
   "smartSkipCompleted": true,
   "notificationEnabled": true,
-  "logFile": "auto_learn_v6.log"
+  "logFile": "auto_learn_v6.log",
+  "username": "",
+  "password": ""
 }

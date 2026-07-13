@@ -29,9 +29,12 @@ if not exist "config.json" (
     echo   "maxRetry": 40,
     echo   "videoFastForward": true,
     echo   "fastForwardThreshold": 0.95,
+    echo   "playbackRate": 2.0,
     echo   "smartSkipCompleted": true,
     echo   "notificationEnabled": true,
-    echo   "logFile": "auto_learn_v6.log"
+    echo   "logFile": "auto_learn_v6.log",
+    echo   "username": "",
+    echo   "password": ""
     echo }
     ) > config.json
     echo [INFO] config.json created
