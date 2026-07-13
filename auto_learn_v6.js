@@ -2184,34 +2184,34 @@ async function isCourseCompleted(page) {
   return await page.evaluate(() => {
     const bodyText = document.body.innerText || '';
 
-    // 方法1：页面文字包含完成标记
-    const completedKeywords = ['已完成', '已学完', '学习完成', '本节已完成', '课程已完成', '恭喜完成'];
+    // 方法1：页面文字包含明确的完成标记（需精确匹配）
+    const completedKeywords = ['恭喜完成', '本节已完成', '课程已完成', '学习完成'];
     for (const kw of completedKeywords) {
-      if (bodyText.includes(kw)) return { completed: true, reason: `页面含"${kw}"` };
+      if (bodyText.includes(kw)) return { completed: true, reason: `page text: "${kw}"` };
     }
 
-    // 方法2：大纲中当前课程节点标记为完成（绿色/对勾图标）
-    const outlineItems = document.querySelectorAll('[class*="outline"], [class*="catalog"], [class*="chapter"], [class*="section"], [class*="menu-item"]');
+    // 方法2：大纲中当前课程节点标记为完成
+    // 缩小选择器范围，避免误匹配
+    const outlineItems = document.querySelectorAll(
+      '[class*="outline-item"], [class*="chapter-item"], [class*="section-item"], ' +
+      '[class*="catalog-item"], [class*="menu-item"], [class*="tree-node"]'
+    );
     for (const item of outlineItems) {
       const cls = item.className || '';
       const text = item.textContent || '';
-      // 已完成的节点通常有 active/done/finished/checked 等类名
-      if ((cls.includes('active') || cls.includes('done') || cls.includes('finished') ||
-           cls.includes('completed') || cls.includes('checked') || cls.includes('success')) &&
-          text.length > 2 && text.length < 100) {
-        // 进一步确认：检查是否有对勾图标
-        const hasCheckIcon = item.querySelector('[class*="check"], [class*="success"], [class*="done"], svg');
-        if (hasCheckIcon || cls.includes('done') || cls.includes('finished') || cls.includes('completed')) {
-          return { completed: true, reason: `大纲节点已完成: ${text.substring(0, 30)}` };
-        }
+      // 需要同时满足：有完成状态类名 + 有对勾图标 + 文字长度合理
+      const isDoneClass = cls.includes('is-done') || cls.includes('is-finished') || cls.includes('is-completed');
+      const hasCheckIcon = item.querySelector('[class*="icon-check"], [class*="icon-done"], [class*="icon-success"], [class*="status-done"]');
+      if (isDoneClass && hasCheckIcon && text.length > 2 && text.length < 100) {
+        return { completed: true, reason: `outline done: ${text.substring(0, 30)}` };
       }
     }
 
-    // 方法3：进度显示 100%
-    const progressMatch = bodyText.match(/进度[：:]\s*(\d+)%/) || bodyText.match(/(\d+)%/) || bodyText.match(/(\d+)\s*\/\s*\1/);
+    // 方法3：进度显示 100%（仅在明确上下文"学习进度"中匹配）
+    const progressMatch = bodyText.match(/学习进度[：:\s]*(\d+)%/) || bodyText.match(/进度[：:]\s*(\d+)%/);
     if (progressMatch) {
       const pct = parseInt(progressMatch[1]);
-      if (pct >= 100) return { completed: true, reason: `进度${pct}%` };
+      if (pct >= 100) return { completed: true, reason: `progress ${pct}%` };
     }
 
     return { completed: false };
@@ -2309,15 +2309,20 @@ async function handleVideoPage(page) {
   }
 
   // === 视频自动快进 ===
-  if (CONFIG.videoFastForward && videoInfo.duration > 0) {
-    const progress = videoInfo.currentTime / videoInfo.duration;
-    if (progress < CONFIG.fastForwardThreshold && videoInfo.duration > 10) {
-      const targetTime = videoInfo.duration - 3;
-      log(`⏩ 视频快进: ${formatTime(videoInfo.currentTime)} → ${formatTime(targetTime)} (${(progress * 100).toFixed(0)}% → ~97%)`);
+  const duration = videoInfo.duration || 0;
+  const currentTime = videoInfo.currentTime || 0;
+  // 排除无效 duration（Infinity、NaN、0）
+  const validDuration = isFinite(duration) && !isNaN(duration) && duration > 10;
+  
+  if (CONFIG.videoFastForward && validDuration) {
+    const progress = currentTime / duration;
+    if (progress < CONFIG.fastForwardThreshold) {
+      const targetTime = Math.max(0, duration - 3);
+      log(`⏩ Video skip: ${formatTime(currentTime)} -> ${formatTime(targetTime)} (${(progress * 100).toFixed(0)}% -> ~97%)`);
       await page.evaluate((target) => {
         const videos = document.querySelectorAll('video');
         for (const v of videos) {
-          if (v.getBoundingClientRect().width > 100) {
+          if (v.getBoundingClientRect().width > 100 && isFinite(v.duration) && v.duration > 10) {
             v.currentTime = target;
           }
         }
@@ -2328,10 +2333,10 @@ async function handleVideoPage(page) {
   }
 
   // 显示进度
-  const duration = Math.round(videoInfo.duration || 0);
-  const current = Math.round(videoInfo.currentTime || 0);
-  const percent = duration > 0 ? ((current / duration) * 100).toFixed(1) : '?';
-  log(`📺 视频播放中: ${formatTime(current)} / ${formatTime(duration)} (${percent}%)`);
+  const dur = Math.round(duration || 0);
+  const cur = Math.round(currentTime || 0);
+  const percent = dur > 0 ? ((cur / dur) * 100).toFixed(1) : '?';
+  log(`📺 Video: ${formatTime(cur)} / ${formatTime(dur)} (${percent}%)` + (validDuration ? '' : ' [no duration]'));
 
   return 'playing';
 }
