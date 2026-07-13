@@ -6,6 +6,7 @@
   "maxRetry": 40,
   "videoFastForward": true,
   "fastForwardThreshold": 0.95,
+  "playbackRate": 2.0,
   "smartSkipCompleted": true,
   "notificationEnabled": true,
   "logFile": "auto_learn_v6.log"

@@ -14,6 +14,7 @@ const DEFAULT_CONFIG = {
   maxRetry: 40,                  // 考试重试次数
   videoFastForward: true,        // 视频自动快进到末尾
   fastForwardThreshold: 0.95,    // 快进触发阈值（播放进度超过此比例不触发）
+  playbackRate: 2.0,             // 视频播放倍速（1.0=正常, 2.0=2倍速, 最大16）
   smartSkipCompleted: true,      // 智能跳过已完成课程
   notificationEnabled: true,     // 桌面通知开关
   logFile: path.join(__dirname, 'auto_learn_v6.log'),
@@ -2318,17 +2319,23 @@ async function handleVideoPage(page) {
     return 'video_ended';
   }
 
-  // 视频暂停了，恢复播放
-  if (videoInfo.paused && videoInfo.duration > 0) {
-    log('▶️ 视频暂停，恢复播放...');
-    await page.evaluate(() => {
-      const videos = document.querySelectorAll('video');
-      for (const v of videos) {
-        if (v.getBoundingClientRect().width > 100) {
+  // 设置播放倍速 + 恢复播放
+  await page.evaluate((rate) => {
+    const videos = document.querySelectorAll('video');
+    for (const v of videos) {
+      if (v.getBoundingClientRect().width > 100) {
+        if (v.playbackRate !== rate) {
+          v.playbackRate = rate;
+        }
+        if (v.paused) {
           v.play().catch(() => {});
         }
       }
-    });
+    }
+  }, CONFIG.playbackRate);
+
+  if (videoInfo.paused) {
+    log(`▶️ Video resumed at ${CONFIG.playbackRate}x speed`);
   }
 
   // === 视频自动快进 ===
