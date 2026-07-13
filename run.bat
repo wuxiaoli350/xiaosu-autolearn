@@ -43,7 +43,7 @@ netstat -ano | findstr ":9223" >nul
 if %errorlevel% neq 0 (
     echo.
     echo [WARNING] Debug port 9223 is not open!
-    echo Please run start-edge.bat first, then login to yunxuetang.cn
+    echo Please run start-chrome.bat first, then login to yunxuetang.cn
     echo.
     pause
     exit /b 1
